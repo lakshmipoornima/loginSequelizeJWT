@@ -2,15 +2,16 @@ const express=require('express')
 const app=express()
 const helmet = require("helmet");
 const cors = require("cors");
+require("dotenv").config();
 
 const bodyParser = require('body-parser')
 const morgan=require('morgan')
 const routes=require('./api/routes/index')
-const cookieParser=require('cookie-parser')
-require("dotenv").config();
+
+
 require("./api/models/user");
 require('./config/passport')
-app.use(cookieParser())
+
 
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())

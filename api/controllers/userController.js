@@ -1,38 +1,47 @@
 const httpStatus = require('http-status')
-const bcrypt=require('bcryptjs')
-const User=require('../models/user')
-const {createTokens}=require('../middlewares/JWT')
+const bcrypt = require('bcryptjs')
+const User = require('../models/user')
+const { createJwtToken } = require('../utils/JWT')
 
-let users = []
+const createToken = async (user) => {
 
-exports.createUser =async (req, res, next) => {
+    const payload = {
+        id: user.id,
+        email: user.email
+    };
+    console.log("createjwttoken=",createJwtToken(payload))
+    return createJwtToken(payload);
+    
+};
+
+exports.createUser = async (req, res, next) => {
     try {
-        const {username,email,password}=req.body
+        const { username, email, password } = req.body
 
-        let userexists = await User.findOne({where:{email}})
-                        .catch((err)=>{
-                            console.log("Error : ", err)
-                        })
-          //Checking for email uniqueness
-        if (userexists) { 
+        let userexists = await User.findOne({ where: { email } })
+            .catch((err) => {
+                console.log("Error : ", err)
+            })
+        //Checking for email uniqueness
+        if (userexists) {
             res.status(httpStatus.CONFLICT).json("User already exists.Try to log in..")
-         }
+        }
         else {
             //Create User
 
-            bcrypt.hash(password,10).then(async (hash)=>{
-                
-                const newUser=new User({username,email,password:hash})
-                const savedUser=await newUser.save().catch((err)=>{
-                    console.log("Error : ",err);
+            bcrypt.hash(password, 10).then(async (hash) => {
+
+                const newUser = new User({ username, email, password: hash })
+                const savedUser = await newUser.save().catch((err) => {
+                    console.log("Error : ", err);
                     res.status(httpStatus.INTERNAL_SERVER_ERROR).json({ error: "Cannot register user at the moment!" })
                 })
 
-                
-                if(savedUser)
-                res.status(httpStatus.CREATED).json(savedUser);    
-            })       
-        }      
+
+                if (savedUser)
+                    res.status(httpStatus.CREATED).json(savedUser);
+            })
+        }
     }
     catch (err) {
         console.log(err);
@@ -40,29 +49,30 @@ exports.createUser =async (req, res, next) => {
     }
 }
 
-exports.loginUser = async(req, res, next) => {
+exports.loginUser = async (req, res, next) => {
     try {
 
-        const {email,password}=req.body
+        const { email, password } = req.body
 
-        let userWithEmail = await User.findOne({where:{email}}).catch((err)=>{
-            console.log("Error : ",err);
+        let userWithEmail = await User.findOne({ where: { email } }).catch((err) => {
+            console.log("Error : ", err);
         })
         //If user with the given email is not found
         !userWithEmail && res.status(httpStatus.NOT_FOUND).json("User email not registered!!!..")
 
         //If user is found compare password with database password
 
-        const dbpassword=userWithEmail.password
-        bcrypt.compare(password,dbpassword).then((match)=>{
-            if(!match){
-                res.status(httpStatus.BAD_REQUEST).json({error:"Wrong Username and Password combination"})
+        const dbpassword = userWithEmail.password
+        bcrypt.compare(password, dbpassword).then(async (match) => {
+            if (!match) {
+                res.status(httpStatus.BAD_REQUEST).json({ error: "Wrong Username and Password combination" })
             }
             //If password is validated create a token
-            else{   
-                let jwtToken=createTokens(userWithEmail)
-               
-                res.status(httpStatus.OK).json({message: `Welcome ${userWithEmail.username}!!!`,token:jwtToken});
+            else {
+                const jwtToken = await createToken(userWithEmail)
+                console.log("JWT token = ",jwtToken)
+
+                res.status(httpStatus.OK).json({ message: `Welcome ${userWithEmail.username}!!!`, token: jwtToken });
             }
         })
     }
@@ -72,11 +82,11 @@ exports.loginUser = async(req, res, next) => {
     }
 }
 
-exports.getHome=(req,res,next)=>{
-    try{
+exports.getHome = (req, res, next) => {
+    try {
         res.status(httpStatus.OK).json("User authenticated. Token validated....")
     }
-    catch(err){
+    catch (err) {
         next(err)
         res.json(err)
     }
